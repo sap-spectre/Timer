@@ -17,6 +17,9 @@ public class stoppless_timer extends AppCompatActivity {
     public static long ss = 0;
     public static long mm = 0;
     public static long hh = 0;
+    public static int sec = 0;
+    public static int min = 0;
+    public static int hour = 0;
     public static long finaltime;
 
     public static TextView timeHH;
@@ -53,7 +56,7 @@ public class stoppless_timer extends AppCompatActivity {
         setContentView(R.layout.activity_timer);
 
         sp = getSharedPreferences("timer", stoppless_timer.MODE_PRIVATE);
-
+        timerStatusGet();
         timeHH = (TextView) findViewById(R.id.time_hh);
         timeMM = (TextView) findViewById(R.id.time_mm);
         timeSS = (TextView) findViewById(R.id.time_ss);
@@ -73,6 +76,16 @@ public class stoppless_timer extends AppCompatActivity {
         stopb = (Button) findViewById(R.id.bstop);
         pauseb = (Button) findViewById(R.id.bpause);
         resumeb = (Button) findViewById(R.id.bresume);
+
+        if (!endtime) {
+            timeleft = setendtime - System.currentTimeMillis();
+            if (timeleft > 1000) {
+                hourTimer(timeleft);
+            } else {
+                timerStatusSave(0, true);
+            }
+        }
+        applogs.setText(setendtime + "" + "    timeleft" + timeleft + "   boolean" + endtime);
 
         plusSS.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -168,27 +181,27 @@ public class stoppless_timer extends AppCompatActivity {
             }
         });
 
-
-        /*timerStatusGet();
-
-        if (!endtime && !running) {
-            timeleft = setendtime - System.currentTimeMillis();
-            timerStart(timeleft);
-        }*/
-
         startb.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (hh != 0) {
-                    finaltime = hh * 60 * 60;
+                if (!endtime && running) {
+                    applog.setText("Already a timer is running");
+                } else {
+                    if (hh != 0) {
+                        finaltime = hh * 60 * 60;
+                    }
+                    if (mm != 0) {
+                        finaltime = finaltime + (mm * 60);
+                    }
+                    finaltime = (finaltime + ss) * 1000;
+                    setendtime = System.currentTimeMillis() + finaltime;
+                    timerStatusSave(setendtime, false);
+                    timeleft = finaltime;
+                    hourTimer(timeleft);
+                    applog.setText("Timer Started");
+
+                    finaltime = ss = mm = hh = 0;
                 }
-                if (mm != 0) {
-                    finaltime = finaltime + (mm * 60);
-                }
-                setendtime = (finaltime + ss) * 1000;
-                hourTimer(setendtime);
-                applog.setText("Timer Started");
-                finaltime = ss = mm = hh = 0;
             }
         });
 
@@ -198,9 +211,14 @@ public class stoppless_timer extends AppCompatActivity {
                 if (running) {
                     cdt.cancel();
                     running = false;
-                    applog.setText("Timer Stopped");
+                    timerStatusSave(0, true);
+                    timeSS.setText("00");
+                    timeMM.setText("00");
+                    timeHH.setText("00");
+                    applog.setText("Timer stopped by user. Last logged: " + hour + ":" + min + ":" + sec + "");
+                } else {
+                    applog.setText("No timer running to stop");
                 }
-                applog.setText("No timer running to sop");
             }
         });
 
@@ -221,7 +239,7 @@ public class stoppless_timer extends AppCompatActivity {
     }
 
 
-    public static void hourTimer(long lefttime) {
+    private void hourTimer(long lefttime) {
         cdt = new CountDownTimer(lefttime, 1000) {
             @Override
             public void onTick(long timeRunning) {
@@ -229,9 +247,9 @@ public class stoppless_timer extends AppCompatActivity {
                 long hours = seconds / 3600;
                 long mins = (seconds % 3600) / 60;
                 long secs = (seconds % 3600) % 60;
-                int hour = (int) hours;
-                int min = (int) mins;
-                int sec = (int) secs;
+                hour = (int) hours;
+                min = (int) mins;
+                sec = (int) secs;
 
                 if (sec < 10) {
                     timeSS.setText("0" + sec + "");
