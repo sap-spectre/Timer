@@ -94,7 +94,8 @@
         android:layout_height="wrap_content"
         android:layout_marginLeft="10dp"
         android:layout_marginRight="10dp"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:gravity="center_horizontal">
 
         <Button
             android:id="@+id/bstart"
@@ -104,24 +105,15 @@
             android:text="START" />
 
         <Button
-            android:id="@+id/bpause"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="5dp"
-            android:text="PAUSE" />
-
-        <Button
-            android:id="@+id/bresume"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="5dp"
-            android:text="RESUME" />
-
-        <Button
             android:id="@+id/bstop"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="STOP" />
+        <Button
+            android:id="@+id/bforce"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FORCE STOP" />
     </LinearLayout>
 
     <TextView

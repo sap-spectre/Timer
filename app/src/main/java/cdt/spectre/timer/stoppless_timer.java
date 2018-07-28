@@ -20,7 +20,6 @@ public class stoppless_timer extends AppCompatActivity {
     public static int sec = 0;
     public static int min = 0;
     public static int hour = 0;
-    public static long finaltime;
 
     public static TextView timeHH;
     public static TextView timeMM;
@@ -36,15 +35,19 @@ public class stoppless_timer extends AppCompatActivity {
 
     public static TextView applog;
     public static TextView applogs;
-    public Button startb;
-    public Button pauseb;
-    public Button resumeb;
-    public Button stopb;
-    public static boolean running = false;
+    public static Button startb;
+    public static Button stopb;
+    public static Button forceb;
 
-    public static long setendtime = 0;
+    public static boolean paused = false;
+    public static boolean running = false;
     public static boolean endtime = true;
+
+    public static long finaltime;
+    public static long millis = 0;
+    public static long setendtime = 0;
     public static long timeleft = 0;
+
     public static SharedPreferences sp;
     public static SharedPreferences.Editor editor;
 
@@ -57,6 +60,8 @@ public class stoppless_timer extends AppCompatActivity {
 
         sp = getSharedPreferences("timer", stoppless_timer.MODE_PRIVATE);
         timerStatusGet();
+        pausedGet();
+
         timeHH = (TextView) findViewById(R.id.time_hh);
         timeMM = (TextView) findViewById(R.id.time_mm);
         timeSS = (TextView) findViewById(R.id.time_ss);
@@ -74,19 +79,36 @@ public class stoppless_timer extends AppCompatActivity {
 
         startb = (Button) findViewById(R.id.bstart);
         stopb = (Button) findViewById(R.id.bstop);
-        pauseb = (Button) findViewById(R.id.bpause);
-        resumeb = (Button) findViewById(R.id.bresume);
+        forceb = (Button) findViewById(R.id.bforce);
 
-        if (!endtime) {
+        if (!endtime && !paused) {
             timeleft = setendtime - System.currentTimeMillis();
             if (timeleft > 1000) {
                 hourTimer(timeleft);
+                startb.setText("LOG");
+                stopb.setText("PAUSE");
             } else {
                 timerStatusSave(0, true);
+                startb.setText("START");
+                stopb.setText("PAUSE");
             }
+        } else if (!endtime && paused) {
+            startb.setText("RESUME");
+            stopb.setText("RESET");
+            long seconds = timeleft / 1000;
+            long hours = seconds / 3600;
+            long mins = (seconds % 3600) / 60;
+            long secs = (seconds % 3600) % 60;
+            hour = (int) hours;
+            min = (int) mins;
+            sec = (int) secs;
+            timeSS.setText(String.format("%02d", sec));
+            timeMM.setText(String.format("%02d", min));
+            timeHH.setText(String.format("%02d", hour));
+            applog.setText("Timer Paused");
         }
-        applogs.setText(setendtime + "" + "    timeleft" + timeleft + "   boolean" + endtime);
-
+        //applogs.setText(setendtime + "" + "    timeleft" + timeleft + "   boolean" + endtime);
+        applogs.setText("");
         plusSS.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -95,12 +117,8 @@ public class stoppless_timer extends AppCompatActivity {
                 } else {
                     ss = ss + 1;
                 }
+                timeSS.setText(String.format("%02d", ss));
 
-                if (ss < 10) {
-                    timeSS.setText("0" + ss + "");
-                } else {
-                    timeSS.setText(ss + "");
-                }
             }
         });
         minusSS.setOnClickListener(new View.OnClickListener() {
@@ -111,11 +129,7 @@ public class stoppless_timer extends AppCompatActivity {
                 } else {
                     ss = ss - 1;
                 }
-                if (ss < 10) {
-                    timeSS.setText("0" + ss + "");
-                } else {
-                    timeSS.setText(ss + "");
-                }
+                timeSS.setText(String.format("%02d", ss));
             }
         });
         plusMM.setOnClickListener(new View.OnClickListener() {
@@ -126,12 +140,7 @@ public class stoppless_timer extends AppCompatActivity {
                 } else {
                     mm = mm + 1;
                 }
-
-                if (mm < 10) {
-                    timeMM.setText("0" + mm + "");
-                } else {
-                    timeMM.setText(mm + "");
-                }
+                timeMM.setText(String.format("%02d", mm));
             }
         });
         minusMM.setOnClickListener(new View.OnClickListener() {
@@ -142,11 +151,7 @@ public class stoppless_timer extends AppCompatActivity {
                 } else {
                     mm = mm - 1;
                 }
-                if (mm < 10) {
-                    timeMM.setText("0" + mm + "");
-                } else {
-                    timeMM.setText(mm + "");
-                }
+                timeMM.setText(String.format("%02d", mm));
             }
         });
         plusHH.setOnClickListener(new View.OnClickListener() {
@@ -157,12 +162,7 @@ public class stoppless_timer extends AppCompatActivity {
                 } else {
                     hh = hh + 1;
                 }
-
-                if (hh < 10) {
-                    timeHH.setText("0" + hh + "");
-                } else {
-                    timeHH.setText(hh + "");
-                }
+                timeHH.setText(String.format("%02d", hh));
             }
         });
         minusHH.setOnClickListener(new View.OnClickListener() {
@@ -173,11 +173,7 @@ public class stoppless_timer extends AppCompatActivity {
                 } else {
                     hh = hh - 1;
                 }
-                if (hh < 10) {
-                    timeHH.setText("0" + hh + "");
-                } else {
-                    timeHH.setText(hh + "");
-                }
+                timeHH.setText(String.format("%02d", hh));
             }
         });
 
@@ -185,8 +181,9 @@ public class stoppless_timer extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (!endtime && running) {
-                    applog.setText("Already a timer is running");
-                } else {
+                    applogs.append(hour + ":" + min + ":" + sec + " \n");
+                    applog.setText("Logged successfully");
+                } else if (endtime && !running) {
                     if (hh != 0) {
                         finaltime = hh * 60 * 60;
                     }
@@ -194,13 +191,26 @@ public class stoppless_timer extends AppCompatActivity {
                         finaltime = finaltime + (mm * 60);
                     }
                     finaltime = (finaltime + ss) * 1000;
+                    if (finaltime <= 0) {
+                        applog.setText("Please set a valid time");
+                        return;
+                    }
                     setendtime = System.currentTimeMillis() + finaltime;
+                    endtime = false;
                     timerStatusSave(setendtime, false);
                     timeleft = finaltime;
                     hourTimer(timeleft);
                     applog.setText("Timer Started");
-
                     finaltime = ss = mm = hh = 0;
+                    stopb.setText("PAUSE");
+                    startb.setText("LOG");
+                } else if (paused && !running) {
+                    startb.setText("LOG");
+                    stopb.setText("PAUSE");
+                    hourTimer(timeleft);
+                    paused = false;
+                    pausedSet(0, false);
+                    applog.setText("Timer Resumed");
                 }
             }
         });
@@ -209,30 +219,49 @@ public class stoppless_timer extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if (running) {
+                    timeleft = millis;
+                    paused = true;
+                    applogs.setText(timeleft + "");
+                    pausedSet(timeleft, paused);
                     cdt.cancel();
                     running = false;
-                    timerStatusSave(0, true);
+                    applog.setText("Timer paused by user. Last logged: " + hour + ":" + min + ":" + sec + "");
+                    stopb.setText("RESET");
+                    startb.setText("RESUME");
+                } else {
                     timeSS.setText("00");
                     timeMM.setText("00");
                     timeHH.setText("00");
-                    applog.setText("Timer stopped by user. Last logged: " + hour + ":" + min + ":" + sec + "");
-                } else {
-                    applog.setText("No timer running to stop");
+                    applog.setText("Timer Stopped.  Cleared all logs");
+                    endtime = true;
+                    pausedSet(0, false);
+                    paused = false;
+                    timerStatusSave(0, true);
+                    applogs.setText("");
+                    startb.setText("START");
+                    stopb.setText("RESET");
                 }
             }
         });
 
-        pauseb.setOnClickListener(new View.OnClickListener() {
+        forceb.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                applog.setText("Not added this operation");
-            }
-        });
+                if(running){
+                cdt.cancel();}
+                endtime = true;
+                paused = false;
+                timeSS.setText("00");
+                timeMM.setText("00");
+                timeHH.setText("00");
+                startb.setText("START");
+                stopb.setText("PAUSE");
+                applog.setText("Timer force stopped, and cleared memory");
+                applogs.setText("");
+               editor = sp.edit();
+                editor.clear();
+                editor.commit();
 
-        resumeb.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                applog.setText("Not added this operation");
             }
         });
 
@@ -243,6 +272,7 @@ public class stoppless_timer extends AppCompatActivity {
         cdt = new CountDownTimer(lefttime, 1000) {
             @Override
             public void onTick(long timeRunning) {
+                millis = timeRunning;
                 long seconds = timeRunning / 1000;
                 long hours = seconds / 3600;
                 long mins = (seconds % 3600) / 60;
@@ -250,23 +280,9 @@ public class stoppless_timer extends AppCompatActivity {
                 hour = (int) hours;
                 min = (int) mins;
                 sec = (int) secs;
-
-                if (sec < 10) {
-                    timeSS.setText("0" + sec + "");
-                } else {
-                    timeSS.setText(sec + "");
-                }
-                if (min < 10) {
-                    timeMM.setText("0" + min + "");
-                } else {
-                    timeMM.setText(min + "");
-                }
-                if (hour < 10) {
-                    timeHH.setText("0" + hour + "");
-                } else {
-                    timeHH.setText(hour + "");
-                }
-                applogs.setText(secs + "");
+                timeSS.setText(String.format("%02d", sec));
+                timeMM.setText(String.format("%02d", min));
+                timeHH.setText(String.format("%02d", hour));
                 running = true;
             }
 
@@ -292,4 +308,17 @@ public class stoppless_timer extends AppCompatActivity {
         setendtime = sp.getLong("setendtime", 0);
         endtime = sp.getBoolean("endtime", true);
     }
+
+    public static void pausedSet(long left, boolean bool) {
+        editor = sp.edit();
+        editor.putBoolean("paused", bool);
+        editor.putLong("pause", left);
+        editor.apply();
+    }
+
+    public static void pausedGet() {
+        paused = sp.getBoolean("paused", false);
+        timeleft = sp.getLong("pause", 0);
+    }
+
 }
